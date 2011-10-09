@@ -113,6 +113,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         if req.isKeepAlive():
             self.keepalive = True
         else:
+
             self.keepalive = False
         
         # Target server host and port
@@ -177,8 +178,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         # switch to new socket
         self.peer    = True
         self.request = socket_ssl
-        self.wfile = self.request.makefile('wb', 0)
-        self.rfile = self.request.makefile('rb', 0)
 
         self.setup()
         self.handle()
