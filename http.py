@@ -23,6 +23,13 @@
 import datetime
 import copy
 import urlparse
+import select
+
+class HTTPUtil():
+    @staticmethod
+    def wait_read(socket):
+        select.select([socket], [], [])
+
 
 class HTTPMessage():
     EOL = "\r\n"
@@ -38,20 +45,12 @@ class HTTPMessage():
         self.uid  = HTTPMessage.uid
         HTTPMessage.uid += 1
 
-    def isChunked(self):
-        r = False
-        for n, v in self.headers.iteritems():
-            if n.lower() == "transfer-encoding" and v.lower() == "chunked":
-                r = True
-                break
-        return r
-
     @staticmethod
     def _readheaders(data):
         headers = {}
 
         line = data.readline()
-        while line != HTTPMessage.EOL:
+        while not(line == HTTPMessage.EOL):
             assert ":" in line
             line = line.rstrip(HTTPMessage.EOL)
             i = line.index(":")
@@ -99,6 +98,24 @@ class HTTPMessage():
 
         return body
 
+    def isChunked(self):
+        r = False
+        for n, v in self.headers.iteritems():
+            if n.lower() == "transfer-encoding" and v.lower() == "chunked":
+                r = True
+                break
+        return r
+
+    def isKeepAlive(self):
+        if 'Connection' in self.headers:
+            if self.headers['Connection'] == 'keep-alive':
+                return True
+        elif 'Proxy-Connection' in self.headers:
+            if self.headers['Proxy-Connection'] == 'keep-alive':
+                return True
+            
+        return False
+            
     def setPeer(self, h, link = True):
         self.peer = h
         if link:
@@ -113,7 +130,7 @@ class HTTPMessage():
             if n.lower() == "content-length":
                 self.headers[n] = len(self.body)
 
-    # Hack to fix https request 
+    # hack to fix https request 
     @staticmethod
     def _fixURLMalformed(scheme, url, headers):
         if ((url.find('http') != 0) and (url[0] == '/')):

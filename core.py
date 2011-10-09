@@ -39,58 +39,82 @@ from logger import Logger
 proxystate = None
 
 class ProxyHandler(SocketServer.StreamRequestHandler):
-
     def __init__(self, request, client_address, server):
-        self.peer = None
-        self.rdata = None
+        self.peer = False
+        self.keepalive = False
+        self.target = None
+        # just for debugging
+        self.counter = 0
+        self._host = 'None'
+        self._port = 0
+
         SocketServer.StreamRequestHandler.__init__(self, request, client_address, server)
-
-    def setup(self):
-        if not(self.peer):
-            SocketServer.StreamRequestHandler.setup(self)
-            self.rdata = self.rfile
-            return
-
-    def finish(self):
-        # close SSL connection
-        if self.peer:
-            self.peer.close()
-            self.rdata.close()
-
-        SocketServer.StreamRequestHandler.finish(self)
         
     def createConnection(self, host, port):
         global proxystatus
-        # If a SSL tunnel was established, create a HTTPS connection to the server
-        if self.peer:
-            try:
-                conn = httplib.HTTPSConnection(host, port)
-                return conn
-            except HTTPException as e:
-                proxystatus.log.debug(e.__str__())
 
-        # HTTP conneciton
-        return httplib.HTTPConnection(host, port)
+        if self.target and self._host == host:
+            return self.target
+
+        try:
+            # If a SSL tunnel was established, create a HTTPS connection to the server
+            if self.peer:
+                conn = httplib.HTTPSConnection(host, port, timeout = 60)
+            else:
+                # HTTP Connection
+                conn = httplib.HTTPConnection(host, port)
+        except HTTPException as e:
+            proxystatus.log.debug(e.__str__())
+
+        # if you need a persistent connection add the socket to the dictionary
+        if self.keepalive:
+            self.target = conn
+            self._host = host
+            self._port = port
+
+        return conn
 
     def sendResponse(self, res):
-        # If a SSL tunnel was established, send the response through it
-        if self.peer:
-            self.peer.write(res)
-        else:
-            self.wfile.write(res)
-     
+        self.wfile.write(res)
+
+    def finish(self):
+        if not(self.keepalive):
+            if self.target:
+                self.target.close()
+            return SocketServer.StreamRequestHandler.finish(self)
+
+        # keep-alive is true, then go and listen to the socket
+        return self.handle()
+
     def handle(self):
         global proxystate
+
+        if self.keepalive:
+            if self.peer:
+                HTTPSUtil.wait_read(self.request)
+            else:
+                HTTPUtil.wait_read(self.request)
+
+            # Just debugging
+            if self.counter > 0:
+                proxystate.log.debug(str(self.client_address) + ' socket reused: ' + str(self.counter))
+            self.counter += 1
         
         try:
-            req = HTTPRequest.build(self.rdata)
+            req = HTTPRequest.build(self.rfile)
         except Exception as e:
-            proxystate.log.debug("Error on reading request message")
+            proxystate.log.debug(e.__str__() + ": Error on reading request message")
             return
         
         # Delegate request to plugin
         req = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_REQUEST, req.clone())
 
+        # if you need a persistent connection set the flag in order to save the status
+        if req.isKeepAlive():
+            self.keepalive = True
+        else:
+            self.keepalive = False
+        
         # Target server host and port
         host, port = ProxyState.getTargetHost(req)
         
@@ -103,40 +127,43 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         elif req.getMethod() == HTTPRequest.METHOD_CONNECT:
             res = self.doCONNECT(host, port, req)
 
+    def doRequest(self, conn, method, path, params, headers):
+        global proxystate
+        try:
+            conn.request(method, path, params, headers)
+            return True
+        except IOError as e:
+            proxystate.log.error("%s: %s:%d" % (e.__str__(), conn.host, conn.port))
+            return False
+
     def doGET(self, host, port, req):
         conn = self.createConnection(host, port)
-        conn.request("GET", req.getPath(), '', req.headers)
-
-        res = self._getresponse(conn)
-
+        if not(self.doRequest(conn, "GET", req.getPath(), '', req.headers)): return ''
         # Delegate response to plugin
+        res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
-
         data = res.serialize()
         return data
 
     def doPOST(self, host, port, req):
         conn = self.createConnection(host, port)
         params = urllib.urlencode(req.getParams())
-        conn.request("POST", req.getPath(), params, req.headers)
-
-        res = self._getresponse(conn)
-
+        if not(self.doRequest(conn, "POST", req.getPath(), params, req.headers)): return ''
         # Delegate response to plugin
+        res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
-
         data = res.serialize()
         return data
 
     def doCONNECT(self, host, port, req):
         global proxystate
 
-        socket = self.request
-        socket_ssl = ssl.wrap_socket(socket, server_side = True, certfile = './cert/cert.pem', ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
-        self.peer = socket_ssl
-        HTTPSRequest.sendAck(socket)
+        socket_req = self.request
+        socket_ssl = ssl.wrap_socket(socket_req, server_side = True, certfile = './cert/cert.pem', ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
+
+        HTTPSRequest.sendAck(socket_req)
         
-        host, port = socket.getpeername()
+        host, port = socket_req.getpeername()
         proxystate.log.debug("Send ack to the peer %s on port %d for establishing SSL tunnel" % (host, port))
 
         while True:
@@ -147,9 +174,17 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
                 # proxystate.log.error(e.__str__())
                 return
 
-        self.rdata = HTTPSUtil.readSSL(self.peer)
+        # switch to new socket
+        self.peer    = True
+        self.request = socket_ssl
+        self.wfile = self.request.makefile('wb', 0)
+        self.rfile = self.request.makefile('rb', 0)
+
+        self.setup()
         self.handle()
-        
+
+    def _closeSocket(self):
+        self.finish()
 
     def _getresponse(self, conn):
         res = conn.getresponse()
@@ -160,9 +195,10 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             proto = "HTTP/1.1"
         code = res.status
         msg = res.reason
-        headers = dict(res.getheaders())
+        headers = {k:v for k,v in res.getheaders()}
         conn.close()
         res = HTTPResponse(proto, code, msg, headers, body)
+            
         return res
 
 class ThreadedHTTPProxyServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):

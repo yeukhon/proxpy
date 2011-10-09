@@ -20,12 +20,8 @@
   
 """
 
-import httplib
-import ssl
-import StringIO
 from http import *
 import select
-import time
 
 class HTTPSRequest(HTTPMessage):
     @staticmethod
@@ -35,29 +31,10 @@ class HTTPSRequest(HTTPMessage):
         socket.send(ack.serialize())
 
 class HTTPSUtil():
+
     @staticmethod
     def wait_read(socket):
         if socket.pending():
             return
 
         select.select([socket], [], [])
-    
-    @staticmethod
-    def readSSL(socket):
-	ret_data = ''
-
-        while True:
-            try:
-                ret_data += socket.read(4096)
-                if not(socket.pending()):
-                    break
-                if 'GET' in ret_data and ret_data.count(HTTPMessage.EOL*2) == 1:
-                    break
-                elif 'POST' in ret_data and ret_data.count(HTTPMessage.EOL*2) == 2:
-                    break
-            except ssl.SSLError as err:
-                if err.args[0] == ssl.SSL_ERROR_WANT_READ:
-                    self.wait_read(socket)
-
-	return StringIO.StringIO(ret_data)
-
