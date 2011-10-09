@@ -30,7 +30,6 @@ class HTTPUtil():
     def wait_read(socket):
         select.select([socket], [], [])
 
-
 class HTTPMessage():
     EOL = "\r\n"
     HTTP_CODE_OK = 200
