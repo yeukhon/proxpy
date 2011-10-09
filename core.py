@@ -55,12 +55,13 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         global proxystatus
 
         if self.target and self._host == host:
+            print self.target
             return self.target
 
         try:
             # If a SSL tunnel was established, create a HTTPS connection to the server
             if self.peer:
-                conn = httplib.HTTPSConnection(host, port, timeout = 60)
+                conn = httplib.HTTPSConnection(host, port)
             else:
                 # HTTP Connection
                 conn = httplib.HTTPConnection(host, port)
@@ -100,7 +101,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             if self.counter > 0:
                 proxystate.log.debug(str(self.client_address) + ' socket reused: ' + str(self.counter))
             self.counter += 1
-        
+
         try:
             req = HTTPRequest.build(self.rfile)
         except Exception as e:
@@ -114,7 +115,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         if req.isKeepAlive():
             self.keepalive = True
         else:
-
             self.keepalive = False
         
         # Target server host and port
@@ -183,9 +183,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         self.setup()
         self.handle()
 
-    def _closeSocket(self):
-        self.finish()
-
     def _getresponse(self, conn):
         res = conn.getresponse()
         body = res.read()
@@ -196,7 +193,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         code = res.status
         msg = res.reason
         headers = {k:v for k,v in res.getheaders()}
-        conn.close()
         res = HTTPResponse(proto, code, msg, headers, body)
             
         return res
