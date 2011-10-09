@@ -43,9 +43,10 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         self.peer = False
         self.keepalive = False
         self.target = None
-        # just for debugging
+
+        # Just for debugging
         self.counter = 0
-        self._host = 'None'
+        self._host = None
         self._port = 0
 
         SocketServer.StreamRequestHandler.__init__(self, request, client_address, server)
@@ -66,7 +67,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         except HTTPException as e:
             proxystatus.log.debug(e.__str__())
 
-        # if you need a persistent connection add the socket to the dictionary
+        # If we need a persistent connection, add the socket to the dictionary
         if self.keepalive:
             self.target = conn
             self._host = host
@@ -78,12 +79,12 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         self.wfile.write(res)
 
     def finish(self):
-        if not(self.keepalive):
+        if not self.keepalive:
             if self.target:
                 self.target.close()
             return SocketServer.StreamRequestHandler.finish(self)
 
-        # keep-alive is true, then go and listen to the socket
+        # Otherwise keep-alive is True, then go on and listen on the socket
         return self.handle()
 
     def handle(self):
@@ -139,7 +140,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
     def doGET(self, host, port, req):
         conn = self.createConnection(host, port)
-        if not(self.doRequest(conn, "GET", req.getPath(), '', req.headers)): return ''
+        if not self.doRequest(conn, "GET", req.getPath(), '', req.headers): return ''
         # Delegate response to plugin
         res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
@@ -149,7 +150,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
     def doPOST(self, host, port, req):
         conn = self.createConnection(host, port)
         params = urllib.urlencode(req.getParams())
-        if not(self.doRequest(conn, "POST", req.getPath(), params, req.headers)): return ''
+        if not self.doRequest(conn, "POST", req.getPath(), params, req.headers): return ''
         # Delegate response to plugin
         res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
@@ -175,7 +176,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
                 # proxystate.log.error(e.__str__())
                 return
 
-        # switch to new socket
+        # Switch to new socket
         self.peer    = True
         self.request = socket_ssl
 

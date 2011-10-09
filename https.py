@@ -31,10 +31,8 @@ class HTTPSRequest(HTTPMessage):
         socket.send(ack.serialize())
 
 class HTTPSUtil():
-
     @staticmethod
     def wait_read(socket):
         if socket.pending():
             return
-
         select.select([socket], [], [])

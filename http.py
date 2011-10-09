@@ -50,7 +50,7 @@ class HTTPMessage():
         headers = {}
 
         line = data.readline()
-        while not(line == HTTPMessage.EOL):
+        while line != HTTPMessage.EOL:
             assert ":" in line
             line = line.rstrip(HTTPMessage.EOL)
             i = line.index(":")
