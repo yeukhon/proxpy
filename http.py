@@ -58,7 +58,7 @@ class HTTPMessage():
             v = line[i+1:]
             headers[n] = v.lstrip()
             line = data.readline()
-            
+
         return headers
 
     @staticmethod
@@ -232,7 +232,18 @@ class HTTPRequest(HTTPMessage):
             if len(self.body) > 0:
                 params.update(urlparse.parse_qs(self.body))
 
+	if params:
+	    params = self.fixParams(params)
+
         return params
+
+    @staticmethod
+    def fixParams(params):
+	d = {}
+	# Just convert list to value: just one value per key
+	for k,v in params.iteritems():
+	    d[k] = v[0]
+	return d
 
 class HTTPResponse(HTTPMessage):
     def __init__(self, proto, code, msg, headers = None, body = ""):
