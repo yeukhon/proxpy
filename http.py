@@ -229,7 +229,7 @@ class HTTPRequest(HTTPMessage):
                 params.update(urlparse.parse_qs(r))
         if typez is None or typez == HTTPRequest.METHOD_POST:
             if len(self.body) > 0:
-                params.update(urlparse.parse_qs(self.body))
+                params.update(urlparse.parse_qs(self.body, keep_blank_values = True))
 
 	if params:
 	    params = {k:v[0] for k,v in params.iteritems()}

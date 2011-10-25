@@ -50,12 +50,11 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         self._port = 0
 
         SocketServer.StreamRequestHandler.__init__(self, request, client_address, server)
-        
+    
     def createConnection(self, host, port):
-        global proxystatus
+        global proxystate
 
         if self.target and self._host == host:
-            print self.target
             return self.target
 
         try:
@@ -66,14 +65,15 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
                 # HTTP Connection
                 conn = httplib.HTTPConnection(host, port)
         except HTTPException as e:
-            proxystatus.log.debug(e.__str__())
+            proxystate.log.debug(e.__str__())
 
         # If we need a persistent connection, add the socket to the dictionary
         if self.keepalive:
             self.target = conn
-            self._host = host
-            self._port = port
 
+        self._host = host
+        self._port = port
+            
         return conn
 
     def sendResponse(self, res):
@@ -107,7 +107,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         except Exception as e:
             proxystate.log.debug(e.__str__() + ": Error on reading request message")
             return
-        
+
         # Delegate request to plugin
         req = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_REQUEST, req.clone())
 
@@ -128,7 +128,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             self.sendResponse(res)
         elif req.getMethod() == HTTPRequest.METHOD_CONNECT:
             res = self.doCONNECT(host, port, req)
-
+    
     def doRequest(self, conn, method, path, params, headers):
         global proxystate
         try:
@@ -184,7 +184,12 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         self.handle()
 
     def _getresponse(self, conn):
-        res = conn.getresponse()
+        try:
+            res = conn.getresponse()
+        except httplib.HTTPException as e:
+            proxystate.log.debug(e.__str__())
+            return ''
+
         body = res.read()
         if res.version == 10:
             proto = "HTTP/1.0"
@@ -193,6 +198,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         code = res.status
         msg = res.reason
         headers = {k:v for k,v in res.getheaders()}
+            
         res = HTTPResponse(proto, code, msg, headers, body)
             
         return res
