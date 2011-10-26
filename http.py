@@ -48,15 +48,17 @@ class HTTPMessage():
     def _readheaders(data):
         headers = {}
 
-        line = data.readline()
-        while line != HTTPMessage.EOL:
-            assert ":" in line
+	for line in data:
+	    if line == HTTPMessage.EOL:
+		break;
+	    assert ":" in line
             line = line.rstrip(HTTPMessage.EOL)
             i = line.index(":")
             n = line[:i]
             v = line[i+1:]
-            headers[n] = v.lstrip()
-            line = data.readline()
+	    if not(n in headers):
+		headers[n] = []
+	    headers[n].append(v.lstrip())
 
         return headers
 
@@ -67,8 +69,8 @@ class HTTPMessage():
         for n,v in headers.iteritems():
             if n.lower() == "content-length":
                 assert bodylen is None, "[!] Duplicated content length"
-                bodylen = int(v)
-            elif n.lower() == "transfer-encoding" and v.lower() == "chunked":
+                bodylen = int(v[0])
+            elif n.lower() == "transfer-encoding" and v[0].lower() == "chunked":
                 chunked = True
                 break
 
@@ -100,17 +102,17 @@ class HTTPMessage():
     def isChunked(self):
         r = False
         for n, v in self.headers.iteritems():
-            if n.lower() == "transfer-encoding" and v.lower() == "chunked":
+            if n.lower() == "transfer-encoding" and v[0].lower() == "chunked":
                 r = True
                 break
         return r
 
     def isKeepAlive(self):
         if 'Connection' in self.headers:
-            if self.headers['Connection'] == 'keep-alive':
+            if self.headers['Connection'][0] == 'keep-alive':
                 return True
         elif 'Proxy-Connection' in self.headers:
-            if self.headers['Proxy-Connection'] == 'keep-alive':
+            if self.headers['Proxy-Connection'][0] == 'keep-alive':
                 return True
             
         return False
@@ -127,14 +129,14 @@ class HTTPMessage():
         # Fix headers
         for n in self.headers:
             if n.lower() == "content-length":
-                self.headers[n] = len(self.body)
+                self.headers[n][0] = len(self.body)
 
     # hack to fix https request 
     @staticmethod
     def _fixURLMalformed(scheme, url, headers):
         if ((url.find('http') != 0) and (url[0] == '/')):
             assert 'Host' in headers
-            url = scheme + '://' + headers['Host'] + url
+            url = scheme + '://' + headers['Host'][0] + url
         return url
 
 class HTTPRequest(HTTPMessage):
@@ -163,10 +165,8 @@ class HTTPRequest(HTTPMessage):
 
         # Read headers & body
         headers = HTTPMessage._readheaders(data)
-        body    = HTTPMessage._readbody(data, headers)
-
+	body    = HTTPMessage._readbody(data, headers)
         url = HTTPMessage._fixURLMalformed("https", url, headers)
-
         return HTTPRequest(method, url, proto, headers, body)
 
     def getHost(self):
@@ -205,7 +205,8 @@ class HTTPRequest(HTTPMessage):
         s = "{REQ #%d} method: %s ; host: %s ; path: %s ; proto: %s ; len(body): %d\n" % \
             (self.uid, self.method, self.getHost(), self.getPath(), self.proto, len(self.body))
         for n,v in self.headers.iteritems():
-            s += "  %s: %s\n" % (n, v)
+	    for i in v:
+		s += "  %s: %s\n" % (n, i)
         return s
 
     def isRequest(self):
@@ -244,7 +245,10 @@ class HTTPResponse(HTTPMessage):
         self.body    = body
         self.headers = headers
         if self.headers is None:
-            self.headers = {}
+		self.headers = {}
+	else:
+		self.headers = HTTPMessage._readheaders(headers)
+
         HTTPMessage.__init__(self)
 
     @staticmethod
@@ -260,23 +264,6 @@ class HTTPResponse(HTTPMessage):
 
         return HTTPRequest(method, url, proto, headers, body)
 
-    @staticmethod
-    def build(data):
-        # Read response line
-        resline = data.readline().rstrip(HTTPMessage.EOL)
-
-        tmp = resline.split()
-        
-        proto = tmp[0]
-        code  = int(tmp[1])
-        msg   = " ".join(tmp[2:])
-
-        # Read headers & body
-        headers = HTTPMessage._readheaders(data)
-        body    = HTTPMessage._readbody(data, headers)
-
-        return HTTPResponse(proto, code, msg, headers, body)
-
     def serialize(self):
         # Response line
         s = "%s %s %s" % (self.proto, self.code, self.msg)
@@ -284,8 +271,10 @@ class HTTPResponse(HTTPMessage):
 
         # Headers
         for n,v in self.headers.iteritems():
-            s += "%s: %s" % (n, v)
-            s += HTTPMessage.EOL
+	    for i in v:
+		s += "%s: %s" % (n, i)
+		s += HTTPMessage.EOL
+		
         s += HTTPMessage.EOL
 
         # Body
@@ -304,7 +293,8 @@ class HTTPResponse(HTTPMessage):
         s = "{RES #%d} code: %d (%s) ; proto: %s ; len(body): %d\n" % \
             (self.uid, self.code, self.msg, self.proto, len(self.body))
         for n,v in self.headers.iteritems():
-            s += "  %s: %s\n" % (n, v)
+	    for i in v:
+		s += "  %s: %s\n" % (n, i)
         return s
 
     def isResponse(self):

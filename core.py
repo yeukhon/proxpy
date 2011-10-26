@@ -128,11 +128,25 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             self.sendResponse(res)
         elif req.getMethod() == HTTPRequest.METHOD_CONNECT:
             res = self.doCONNECT(host, port, req)
-    
+
+    def _request(self, conn, method, path, params, headers):
+        global proxystate
+        conn.putrequest(method, path, skip_host = True, skip_accept_encoding = True)
+        for header,v in headers.iteritems():
+            if headers == 'content-length':
+                conn.putheader(header, str(len(params)))
+            else:
+                for i in v:
+                    conn.putheader(header, i)
+        conn.endheaders()
+
+        if len(params) > 0:
+            conn.send(params)
+
     def doRequest(self, conn, method, path, params, headers):
         global proxystate
         try:
-            conn.request(method, path, params, headers)
+            self._request(conn, method, path, params, headers)
             return True
         except IOError as e:
             proxystate.log.error("%s: %s:%d" % (e.__str__(), conn.host, conn.port))
@@ -197,10 +211,13 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             proto = "HTTP/1.1"
         code = res.status
         msg = res.reason
-        headers = {k:v for k,v in res.getheaders()}
+        
+        # headers = {k:v for k,v in res.getheaders()}
+        # don't user getheaders() it's fail to split multiple set-cookies
+        headers = res.msg.headers
             
         res = HTTPResponse(proto, code, msg, headers, body)
-            
+
         return res
 
 class ThreadedHTTPProxyServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
