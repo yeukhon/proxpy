@@ -133,7 +133,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         global proxystate
         conn.putrequest(method, path, skip_host = True, skip_accept_encoding = True)
         for header,v in headers.iteritems():
-            if headers == 'content-length':
+            if header == 'content-length':
                 conn.putheader(header, str(len(params)))
             else:
                 for i in v:
@@ -213,7 +213,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         msg = res.reason
         
         # headers = {k:v for k,v in res.getheaders()}
-        # don't user getheaders() it's fail to split multiple set-cookies
+        # do not user getheaders(), as it fails to split multiple set-cookies
         headers = res.msg.headers
             
         res = HTTPResponse(proto, code, msg, headers, body)
