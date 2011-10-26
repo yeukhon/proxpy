@@ -256,8 +256,10 @@ class ProxyServer():
 class ProxyState:
     def __init__(self, port = 8080):
         # Configuration options, set to default values
-        self.plugin     = ProxyPlugin() # Init with a "null" plugin
+        self.plugin     = ProxyPlugin()
         self.listenport = port
+        self.dumpfile   = None
+
         # Internal state
         self.log        = Logger()
         self.history    = HttpHistory()
@@ -319,22 +321,22 @@ class ProxyPlugin:
         hid = proxystate.history.allocate()
 
         if event == ProxyPlugin.EVENT_MANGLE_REQUEST:
-            proxystate.history[hid].oreq = hid
+            proxystate.history[hid].setOriginalRequest(arg)
 
             # Process this argument through the plugin
             mangled_arg = proxystate.plugin.dispatch(ProxyPlugin.EVENT_MANGLE_REQUEST, arg.clone())
 
         elif event == ProxyPlugin.EVENT_MANGLE_RESPONSE:
-            proxystate.history[hid].ores = hid
+            proxystate.history[hid].setOriginalResponse(arg)
 
             # Process this argument through the plugin
             mangled_arg = proxystate.plugin.dispatch(ProxyPlugin.EVENT_MANGLE_RESPONSE, arg.clone())
 
         if mangled_arg is not None:
             if event == ProxyPlugin.EVENT_MANGLE_REQUEST:
-                proxystate.history[hid].mreq = mangled_arg
+                proxystate.history[hid].setMangledRequest(mangled_arg)
             elif event == ProxyPlugin.EVENT_MANGLE_RESPONSE:
-                proxystate.history[hid].mres = mangled_arg
+                proxystate.history[hid].setMangledResponse(mangled_arg)
 
             # HTTPConnection.request does the dirty work :-)
             ret = mangled_arg

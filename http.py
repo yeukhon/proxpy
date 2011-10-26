@@ -50,13 +50,13 @@ class HTTPMessage():
 
 	for line in data:
 	    if line == HTTPMessage.EOL:
-		break;
+		break
 	    assert ":" in line
             line = line.rstrip(HTTPMessage.EOL)
             i = line.index(":")
             n = line[:i]
             v = line[i+1:]
-	    if not(n in headers):
+	    if n not in headers:
 		headers[n] = []
 	    headers[n].append(v.lstrip())
 
@@ -131,7 +131,7 @@ class HTTPMessage():
             if n.lower() == "content-length":
                 self.headers[n][0] = len(self.body)
 
-    # hack to fix https request 
+    # Hack to fix HTTPS request 
     @staticmethod
     def _fixURLMalformed(scheme, url, headers):
         if ((url.find('http') != 0) and (url[0] == '/')):
@@ -233,7 +233,11 @@ class HTTPRequest(HTTPMessage):
                 params.update(urlparse.parse_qs(self.body, keep_blank_values = True))
 
 	if params:
-	    params = {k:v[0] for k,v in params.iteritems()}
+            # FIXME: Do we lose v[1:] ?
+            tmp = {}
+            for k, v in params.iteritems():
+                tmp[k] = v[0]
+            params = tmp
 
         return params
 

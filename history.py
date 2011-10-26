@@ -21,6 +21,8 @@
 """
 
 import threading
+import datetime, base64
+from xml.sax.saxutils import escape as xmlescape
 
 # Synchronization decorator
 def synchronized(lock):
@@ -37,10 +39,42 @@ def synchronized(lock):
 class HttpHistoryEntry:
     def __init__(self, idz, oreq = None, mreq = None, ores = None, mres = None):
         self.id   = idz         # Entry identified (mandatory)
-        self.oreq = oreq        # Original request
-        self.mreq = mreq        # Edited request
-        self.ores = ores        # Original response
-        self.mres = mres        # Edited response
+        self.setOriginalRequest(oreq)
+        self.setOriginalResponse(ores)
+        self.setMangledRequest(mreq)
+        self.setMangledResponse(mres)
+
+    def setOriginalRequest(self, r):
+        if r is None:
+            t = None
+        else:
+            t = datetime.datetime.now()
+        self.oreq_time = t
+        self.oreq = r
+
+    def setOriginalResponse(self, r):
+        if r is None:
+            t = None
+        else:
+            t = datetime.datetime.now()
+        self.ores_time = t
+        self.ores = r
+
+    def setMangledRequest(self, r):
+        if r is None:
+            t = None
+        else:
+            t = datetime.datetime.now()
+        self.mreq_time = t
+        self.mreq = r
+
+    def setMangledResponse(self, r):
+        if r is None:
+            t = None
+        else:
+            t = datetime.datetime.now()
+        self.mres_time = t
+        self.mres = r
 
 class HttpHistory:
     # Synchronization lock
@@ -71,4 +105,60 @@ class HttpHistory:
             if entry.ores is not None:
                 nres += 1
         return nreq, nres
+
+    def dumpXML(self):
+        t = datetime.datetime.now()
+
+        # Document header
+        s = """\
+<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>
+<Head>
+  <Timestamp>%s</Timestamp>
+</Head>
+<Entries>
+""" % t
+
+        # Process single HTTP entries
+        for entry in self.__history:
+            s += "  <Entry>\n"
+            s += "    <ID>%d</ID>\n" % entry.id
+
+            for attr, name in [
+                ("oreq", "OriginalRequest"),
+                ("mreq", "MangledRequest"),
+                ("ores", "OriginalResponse"),
+                ("mres", "MangledResponse"),
+                ]:
+
+                v = getattr(entry, attr)
+                t = getattr(entry, attr + "_time")
+                if v is not None:
+                    s += """\
+    <%s>
+      <Timestamp>%s</Timestamp>
+      <Data>
+""" % (name, t)
+
+                    # Process entry headers
+                    for hname, hvalues in v.headers.iteritems():
+                        for hvalue in hvalues:
+                            s += """\
+          <Header>
+            <Name>%s</Name>
+            <Value>%s</Value>
+          </Header>
+""" % (xmlescape(hname), xmlescape(hvalue))
+
+                    # Process entry body and close tag
+                    s += """\
+        <Body>%s</Body>
+      </Data>
+    </%s>
+""" % (base64.encodestring(v.body), name)
+
+            s += "  </Entry>\n"
+
+        s += "</Entries>\n"
+
+        return s
 

@@ -30,6 +30,7 @@ from core import *
 def show_help():
     print """\
 Syntax: python %s <options>
+ -d <filename>     on termination, dump requests & responses to file
  -h                show this help screen
  -p <port>         listen port
  -r <host:[port]>  redirect HTTP traffic to target host (default port: 80)
@@ -39,7 +40,7 @@ Syntax: python %s <options>
 
 def parse_options():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hp:r:vx:")
+        opts, args = getopt.getopt(sys.argv[1:], "d:hp:r:vx:")
     except getopt.GetoptError, e:
         print str(e)
         show_help()
@@ -55,6 +56,9 @@ def parse_options():
 
     if 'v' in opts:
         ps.log.verbosity += 1
+
+    if 'd' in opts:
+        ps.dumpfile = opts['d']
 
     if 'p' in opts:
         ps.listenport = int(opts['p'])
@@ -88,6 +92,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt, e:
         nreq, nres = proxystate.history.count()
         proxystate.log.info("Terminating... [%d requests, %d responses]" % (nreq, nres))
+        if proxystate.dumpfile is not None:
+            data = proxystate.history.dumpXML()
+            f = open(proxystate.dumpfile, 'w')
+            f.write(data)
+            f.close()
 
-        # You should kill the server
-        # proxyServer.stopProxyServer()
+
