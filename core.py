@@ -163,7 +163,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
     def doPOST(self, host, port, req):
         conn = self.createConnection(host, port)
-        params = urllib.urlencode(req.getParams())
+        params = urllib.urlencode(req.getParams(HTTPRequest.METHOD_POST))
         if not self.doRequest(conn, "POST", req.getPath(), params, req.headers): return ''
         # Delegate response to plugin
         res = self._getresponse(conn)
