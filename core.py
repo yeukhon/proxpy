@@ -202,7 +202,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             res = conn.getresponse()
         except httplib.HTTPException as e:
             proxystate.log.debug(e.__str__())
-            return ''
+            return None
 
         body = res.read()
         if res.version == 10:
@@ -212,7 +212,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         code = res.status
         msg = res.reason
         
-        # headers = {k:v for k,v in res.getheaders()}
         # do not user getheaders(), as it fails to split multiple set-cookies
         headers = res.msg.headers
             
