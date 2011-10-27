@@ -130,11 +130,10 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             res = self.doCONNECT(host, port, req)
 
     def _request(self, conn, method, path, params, headers):
-        conn.set_debuglevel(10)
-
         global proxystate
         conn.putrequest(method, path, skip_host = True, skip_accept_encoding = True)
         for header,v in headers.iteritems():
+            # auto-fix content-length
             if header.lower() == 'content-length':
                 conn.putheader(header, str(len(params)))
             else:
@@ -144,7 +143,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
         if len(params) > 0:
             conn.send(params)
-
 
     def doRequest(self, conn, method, path, params, headers):
         global proxystate
