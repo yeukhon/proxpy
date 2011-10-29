@@ -30,7 +30,6 @@ import os
 import urllib
 import ssl
 import copy
-import certOpenSSL
 
 from history import *
 from http import *
@@ -177,11 +176,8 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         global proxystate
 
         socket_req = self.request
-        certfilename = '/tmp/'+host
-        cert = certOpenSSL.Cert.create(host, certfilename)
-        proxystate.log.debug('certificate with common name %s. ret = %d' % (host, cert) )
-        # FIXME: cert could not exist (cert 0 means the file exists, N otherwise)
-        socket_ssl = ssl.wrap_socket(socket_req, server_side = True, certfile = certfilename+'.pem' , ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
+        certfilename = './cert/ncerts/proxpy.pem'
+        socket_ssl = ssl.wrap_socket(socket_req, server_side = True, certfile = certfilename, ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
 
         HTTPSRequest.sendAck(socket_req)
         
