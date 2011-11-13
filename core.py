@@ -36,6 +36,8 @@ from http import *
 from https import *
 from logger import Logger
 
+DEFAULT_CERT_FILE = "./cert/ncerts/proxpy.pem"
+
 proxystate = None
 
 class ProxyHandler(SocketServer.StreamRequestHandler):
@@ -176,8 +178,9 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         global proxystate
 
         socket_req = self.request
-        certfilename = './cert/ncerts/proxpy.pem'
-        socket_ssl = ssl.wrap_socket(socket_req, server_side = True, certfile = certfilename, ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
+        certfilename = DEFAULT_CERT_FILE
+        socket_ssl = ssl.wrap_socket(socket_req, server_side = True, certfile = certfilename, 
+                                     ssl_version = ssl.PROTOCOL_SSLv23, do_handshake_on_connect = False)
 
         HTTPSRequest.sendAck(socket_req)
         
@@ -222,7 +225,6 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
 class ThreadedHTTPProxyServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     allow_reuse_address = True
-    pass
 
 class ProxyServer():    
     def __init__(self, init_state):
@@ -234,9 +236,7 @@ class ProxyServer():
         global proxystate
         
         self.proxyServer_host = "0.0.0.0"
-    
         self.proxyServer = ThreadedHTTPProxyServer((self.proxyServer_host, self.proxyServer_port), ProxyHandler)
-        self.proxyServer.allow_reuse_address = True
 
         # Start a thread with the server (that thread will then spawn a worker
         # thread for each request)
