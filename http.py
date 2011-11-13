@@ -37,11 +37,20 @@ class HTTPMessage():
     # Global message ID, incremented at each HTTP request/reponse
     uid = 0
 
-    def __init__(self):
+    def __init__(self, headers = None):
         self.peer = None
         self.time = datetime.datetime.now()
         # Set unique message ID
         self.uid  = HTTPMessage.uid
+
+        if headers is None:
+            self.headers = {}
+        elif isinstance(headers, list):
+            self.headers = HTTPMessage._readheaders(headers)
+        else:
+            assert isinstance(headers, dict)
+            self.headers = headers
+
         HTTPMessage.uid += 1
 
     @staticmethod
@@ -139,6 +148,45 @@ class HTTPMessage():
             url = scheme + '://' + headers['Host'][0] + url
         return url
 
+    def __findHeader(self, name, ignorecase = True):
+        r = None
+        for n in self.headers:
+            if (ignorecase and name.lower() == n.lower()) or ((not ignorecase) and name == n):
+                r = n
+                break
+        return r
+
+    def getHeader(self, name, ignorecase = True):
+        """
+        Get the values of header(s) with name 'name'. If 'ignorecase' is True,
+        then the case of the header name is ignored.
+        """
+        r = []
+        for n,v in self.headers.iteritems():
+            if (ignorecase and name.lower() == n.lower()) or ((not ignorecase) and name == n):
+                r.extend(v)
+        return r
+
+    def addHeader(self, name, value, ignorecase = True):
+        """
+        Add a new 'name' header with value 'value' to this HTTPMessage. If
+        'ignorecase' is True, then the case of the header name is ignored.
+        """
+        k = self.__findHeader(name, ignorecase)
+        if k not in self.headers:
+            self.headers[k] = []
+        self.headers[k].append(value)
+
+    def setHeader(self, name, value, ignorecase = True):
+        """
+        Set header with name 'name' to 'value'. Any existing header with the
+        same name is replaced. If 'ignorecase' is True, then the case of the
+        header name is ignored.
+        """
+        k = self.__findHeader(name, ignorecase)
+        self.headers[k] = [value, ]
+
+
 class HTTPRequest(HTTPMessage):
     METHOD_GET     = 1
     METHOD_POST    = 2
@@ -151,10 +199,7 @@ class HTTPRequest(HTTPMessage):
         self.url     = url
         self.proto   = proto
         self.body    = body
-        self.headers = headers
-        if self.headers is None:
-            self.headers = {}
-        HTTPMessage.__init__(self)
+        HTTPMessage.__init__(self, headers)
 
     @staticmethod
     def build(data):
@@ -247,13 +292,7 @@ class HTTPResponse(HTTPMessage):
         self.code    = code
         self.msg     = msg
         self.body    = body
-        self.headers = headers
-        if self.headers is None:
-		self.headers = {}
-	else:
-		self.headers = HTTPMessage._readheaders(headers)
-
-        HTTPMessage.__init__(self)
+        HTTPMessage.__init__(self, headers)
 
     @staticmethod
     def build(data):

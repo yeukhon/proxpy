@@ -212,13 +212,11 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
             proto = "HTTP/1.0"
         else:
             proto = "HTTP/1.1"
+
         code = res.status
         msg = res.reason
-        
-        # do not user getheaders(), as it fails to split multiple set-cookies
-        headers = res.msg.headers
-            
-        res = HTTPResponse(proto, code, msg, headers, body)
+
+        res = HTTPResponse(proto, code, msg, res.msg.headers, body)
 
         return res
 
