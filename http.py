@@ -206,11 +206,14 @@ class HTTPRequest(HTTPMessage):
         # Read request line
         reqline = data.readline().rstrip(HTTPMessage.EOL)
 
+        if reqline == '': 
+            return None
+        
         method, url, proto = reqline.split()
 
         # Read headers & body
         headers = HTTPMessage._readheaders(data)
-	body    = HTTPMessage._readbody(data, headers)
+        body    = HTTPMessage._readbody(data, headers)
         url = HTTPMessage._fixURLMalformed("https", url, headers)
         return HTTPRequest(method, url, proto, headers, body)
 

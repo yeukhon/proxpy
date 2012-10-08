@@ -30,9 +30,10 @@ from core import *
 def show_help():
     print """\
 Syntax: python %s <options>
+ -a <addr>         listen address (default 0.0.0.0)
  -d <filename>     on termination, dump requests & responses to file
  -h                show this help screen
- -p <port>         listen port
+ -p <port>         listen port  (default 8080)
  -r <host:[port]>  redirect HTTP traffic to target host (default port: 80)
  -v                be more verbose
  -x <filename>     load a ProxPy plugin
@@ -40,7 +41,7 @@ Syntax: python %s <options>
 
 def parse_options():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:hp:r:vx:")
+        opts, args = getopt.getopt(sys.argv[1:], "a:d:hp:r:vx:")
     except getopt.GetoptError, e:
         print str(e)
         show_help()
@@ -62,6 +63,9 @@ def parse_options():
 
     if 'p' in opts:
         ps.listenport = int(opts['p'])
+        
+    if 'a' in opts:
+        ps.listenaddr = opts['a']
 
     # Check and parse redirection host
     if 'r' in opts:

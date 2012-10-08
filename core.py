@@ -109,6 +109,9 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         except Exception as e:
             proxystate.log.debug(e.__str__() + ": Error on reading request message")
             return
+            
+        if req is None:
+            return
 
         # Delegate request to plugin
         req = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_REQUEST, req.clone())
@@ -231,11 +234,11 @@ class ProxyServer():
         global proxystate
         proxystate = init_state
         self.proxyServer_port = proxystate.listenport
+        self.proxyServer_host = proxystate.listenaddr
 
     def startProxyServer(self):
         global proxystate
         
-        self.proxyServer_host = "0.0.0.0"
         self.proxyServer = ThreadedHTTPProxyServer((self.proxyServer_host, self.proxyServer_port), ProxyHandler)
 
         # Start a thread with the server (that thread will then spawn a worker
@@ -254,10 +257,11 @@ class ProxyServer():
         self.proxyServer.shutdown()
 
 class ProxyState:
-    def __init__(self, port = 8080):
+    def __init__(self, port = 8080, addr = "0.0.0.0"):
         # Configuration options, set to default values
         self.plugin     = ProxyPlugin()
         self.listenport = port
+        self.listenaddr = addr
         self.dumpfile   = None
 
         # Internal state
