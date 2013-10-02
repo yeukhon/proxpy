@@ -25,9 +25,11 @@ import BaseHTTPServer
 import socket
 import threading
 import httplib
+import json
 import time
 import os
 import urllib
+import urlparse
 import ssl
 import copy
 
@@ -169,8 +171,17 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
     def doPOST(self, host, port, req):
         conn = self.createConnection(host, port)
-        params = urllib.urlencode(req.getParams(HTTPRequest.METHOD_POST))
-        if not self.doRequest(conn, "POST", req.getPath(), params, req.headers): return ''
+        # a quick hack to add support for JSON formamted string
+        params = urlparse.parse_qs(req.body)
+        # parase_qs makes a dictionary of list
+        # use list only if the query string has multiple same key
+        for key, value in params.iteritems():
+            if isinstance(value, list) and len(value) < 2:
+                params[key] = value[0] or ""
+        params = json.dumps(params)
+        if not self.doRequest(conn, "POST", req.getPath(), params, req.headers):
+            return ''
+
         # Delegate response to plugin
         res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
