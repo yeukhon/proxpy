@@ -112,11 +112,8 @@ class HttpHistory:
         # Document header
         s = """\
 <?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>
-<Head>
-  <Timestamp>%s</Timestamp>
-</Head>
 <Entries>
-""" % t
+"""
 
         # Process single HTTP entries
         for entry in self.__history:
