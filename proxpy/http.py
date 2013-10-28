@@ -250,11 +250,11 @@ class HTTPRequest(HTTPMessage):
         return s
 
     def __str__(self):
-        s = "{REQ #%d} method: %s ; host: %s ; path: %s ; proto: %s ; len(body): %d\n" % \
-            (self.uid, self.method, self.getHost(), self.getPath(), self.proto, len(self.body))
+        s = "%s %s %s\n" % (self.method, self.getPath(), self.proto)
+        print self.headers.iteritems()
         for n,v in self.headers.iteritems():
-	    for i in v:
-		s += "  %s: %s\n" % (n, i)
+    	    for i in v:
+	        	s += "%s: %s\n" % (n, i)
         return s
 
     def isRequest(self):
@@ -336,11 +336,11 @@ class HTTPResponse(HTTPMessage):
         return s
 
     def __str__(self):
-        s = "{RES #%d} code: %d (%s) ; proto: %s ; len(body): %d\n" % \
-            (self.uid, self.code, self.msg, self.proto, len(self.body))
+        s = "%s %s %s\n" % (self.proto, self.code, self.msg)
         for n,v in self.headers.iteritems():
-	    for i in v:
-		s += "  %s: %s\n" % (n, i)
+	        for i in v:
+		    s += "%s: %s\n" % (n, i)
+        s = s + "\n" + self.body
         return s
 
     def isResponse(self):
