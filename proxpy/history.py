@@ -135,6 +135,20 @@ class HttpHistory:
       <Timestamp>%s</Timestamp>
       <Data>
 """ % (name, t)
+                    proto = getattr(v, "proto")
+                    code = hasattr(v, "code")
+                    msg = hasattr(v, "msg")
+                    if code and msg:
+                        s += """\
+        <Protocol>%s</Protocol>
+        <StatusCode>%s</StatusCode>
+        <StatusMsg>%s</StatusMsg>
+""" % (proto, v.code, v.msg)
+                    else:
+                        s += """\
+        <Protocol>%s</Protocol>
+        <Method>%s</Method>
+""" % (proto, v.method)
 
                     # Process entry headers
                     for hname, hvalues in v.headers.iteritems():
