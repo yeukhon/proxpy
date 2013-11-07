@@ -249,6 +249,15 @@ class HTTPRequest(HTTPMessage):
             s += "#%s" % r.fragment
         return s
 
+    def headers_as_str(self):
+        s = ""
+        for n,v in self.headers.iteritems():
+            print n
+            if n not in ("Host", "User-Agent"):
+                for i in v:
+                    s += "%s: %s\n" % (n, i)
+        return s
+
     def __str__(self):
         s = "%s %s %s\n" % (self.method, self.getPath(), self.proto)
         print self.headers.iteritems()
@@ -333,6 +342,13 @@ class HTTPResponse(HTTPMessage):
             s += HTTPMessage.EOL
             s += "0" + HTTPMessage.EOL + HTTPMessage.EOL
 
+        return s
+
+    def headers_as_str(self):
+        s = "%s %s %s\n" % (self.proto, self.code, self.msg)
+        for n,v in self.headers.iteritems():
+	        for i in v:
+		    s += "%s: %s\n" % (n, i)
         return s
 
     def __str__(self):

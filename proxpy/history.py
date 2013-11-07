@@ -149,7 +149,7 @@ class HttpHistory:
         <Protocol>%s</Protocol>
         <Method>%s</Method>
 """ % (proto, v.method)
-
+                    print v.headers_as_str()
                     # Process entry headers
                     for hname, hvalues in v.headers.iteritems():
                         for hvalue in hvalues:
@@ -159,6 +159,11 @@ class HttpHistory:
             <Value>%s</Value>
           </Header>
 """ % (xmlescape(hname), xmlescape(hvalue))
+
+                    # Append raw headers
+                    s += """\
+          <RawHeaders>%s</RawHeaders>
+""" % v.headers_as_str()
 
                     # Process entry body and close tag
                     s += """\

@@ -85,14 +85,10 @@ def parse_options():
 
 def main():
     global proxystate
-    proxystate = parse_options()
-    proxyServer = ProxyServer(proxystate)
-    proxyServer.startProxyServer()
-
-if __name__ == "__main__":
-    global proxystate
     try:
-        main()
+        proxystate = parse_options()
+        proxyServer = ProxyServer(proxystate)
+        proxyServer.startProxyServer()
     except KeyboardInterrupt, e:
         nreq, nres = proxystate.history.count()
         proxystate.log.info("Terminating... [%d requests, %d responses]" % (nreq, nres))
@@ -102,4 +98,6 @@ if __name__ == "__main__":
             f.write(data)
             f.close()
 
-
+if __name__ == "__main__":
+    global proxystate
+    main()
