@@ -214,7 +214,7 @@ class HTTPRequest(HTTPMessage):
         # Read headers & body
         headers = HTTPMessage._readheaders(data)
         body    = HTTPMessage._readbody(data, headers)
-        url = HTTPMessage._fixURLMalformed("https", url, headers)
+        url = HTTPMessage._fixURLMalformed("http", url, headers)
         return HTTPRequest(method, url, proto, headers, body)
 
     def getHost(self):
@@ -230,9 +230,8 @@ class HTTPRequest(HTTPMessage):
             port = r.port
             if port is None and r.scheme != "https":
                 port = 80
-            else:
+            elif r.scheme == "https":
                 port = 443
-                
             host = r.hostname
 
         assert host is not None and len(host) > 0, "[!] Cannot find target host in URL '%s'" % self.url
