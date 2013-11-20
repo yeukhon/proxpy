@@ -165,6 +165,16 @@ class HttpHistory:
           <RawHeaders>%s</RawHeaders>
 """ % v.headers_as_str()
 
+                    if (hasattr(v, "getHost")):
+                        # Append the scheme, host and port
+                        s += """\
+              <Url>
+                <Scheme>%s</Scheme>
+                <HostName>%s</HostName>
+                <Port>%s</Port>
+                <Path>%s</Path>
+              </Url>
+    """ % ("http", v.getHost()[0], v.getHost()[1], v.getPath())
                     # Process entry body and close tag
                     s += """\
         <Body>%s</Body>
