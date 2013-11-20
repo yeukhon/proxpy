@@ -126,7 +126,7 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
         
         # Target server host and port
         host, port = ProxyState.getTargetHost(req)
-        
+
         if req.getMethod() == HTTPRequest.METHOD_GET:
             res = self.doGET(host, port, req)
             self.sendResponse(res)
@@ -171,17 +171,8 @@ class ProxyHandler(SocketServer.StreamRequestHandler):
 
     def doPOST(self, host, port, req):
         conn = self.createConnection(host, port)
-        # a quick hack to add support for JSON formamted string
-        params = urlparse.parse_qs(req.body)
-        # parase_qs makes a dictionary of list
-        # use list only if the query string has multiple same key
-        for key, value in params.iteritems():
-            if isinstance(value, list) and len(value) < 2:
-                params[key] = value[0] or ""
-        params = json.dumps(params)
-        if not self.doRequest(conn, "POST", req.getPath(), params, req.headers):
+        if not self.doRequest(conn, "POST", req.getPath(), req.body, req.headers):
             return ''
-
         # Delegate response to plugin
         res = self._getresponse(conn)
         res = ProxyPlugin.delegate(ProxyPlugin.EVENT_MANGLE_RESPONSE, res.clone())
